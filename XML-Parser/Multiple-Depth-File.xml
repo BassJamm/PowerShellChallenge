@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<users>
+    <user id="1001">
+        <name>John Doe</name>
+        <age>30</age>
+        <email>john.doe@example.com</email>
+        <location>
+            <city>New York</city>
+            <zipcode>10001</zipcode>
+            <country>USA</country>
+        </location>
+        <phone>
+            <mobile>123-456-7890</mobile>
+            <home>987-654-3210</home>
+        </phone>
+    </user>
+    <user id="1002">
+        <name>Jane Smith</name>
+        <age>25</age>
+        <email>jane.smith@example.com</email>
+        <location>
+            <city>Los Angeles</city>
+            <zipcode>90001</zipcode>
+            <country>USA</country>
+        </location>
+        <phone>
+            <mobile>555-555-5555</mobile>
+            <home>111-111-1111</home>
+        </phone>
+    </user>
+    <user id="1003">
+        <name>Michael Johnson</name>
+        <age>40</age>
+        <email>michael.johnson@example.com</email>
+        <location>
+            <city>Chicago</city>
+            <zipcode>60601</zipcode>
+            <country>USA</country>
+        </location>
+        <phone>
+            <mobile>777-777-7777</mobile>
+            <home>222-222-2222</home>
+        </phone>
+    </user>
+    <!-- Add more user entries here -->
+</users>
