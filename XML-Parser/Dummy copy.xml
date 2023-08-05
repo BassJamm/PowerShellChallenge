@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<users>
+  <user>
+      <username>John Doe</username>
+      <age>31</age>
+      <address>
+        <city>New York</city>
+        <zipcode>102030</zipcode>
+      </address>
+      <username>Mike November</username>
+      <age>42</age>
+      <address>
+        <city>Chicago</city>
+        <zipcode>462957</zipcode>
+      </address>
+  </user>
+</users>

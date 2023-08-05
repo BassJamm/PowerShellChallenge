@@ -2,23 +2,21 @@
 $sourceDirectory = Read-Host -Prompt "Please enter the directory you wish to scan"
 
 ###### Get all Directories in that location. ######
-$ChildDirectories = Get-ChildItem $sourceDirectory | `
-                        Where-Object {$_.PSIsContainer -eq $true} | `
-                        Sort-Object Name
+Write-Host "Collecting the diretory information." -ForegroundColor Yellow
+$ChildDirectories = (Get-ChildItem $sourceDirectory -Directory).FullName
+Start-Sleep 1
+Write-Host "Directories found successfully." -ForegroundColor Green
 
 ###### Foreach directory get all items recursively. ######
+Write-Host "Processing items." -ForegroundColor Yellow
 $childDirectorySizes = foreach ($folder in $ChildDirectories) {
-
-    $subFolderItems = Get-ChildItem $folder.FullName -recurse -force | `
-    Where-Object {$_.PSIsContainer -eq $false} | `
-    Measure-Object -property Length -sum | `
-    Select-Object Sum  
-    
-    New-Object psobject -property @{
-        "Location" = $folder.FullName
-        "Size(MB)" = [Math]::Round($subFolderItems.sum /1MB, 2)
+    [PSCustomObject]@{
+        "Location" = $folder
+        "FileItems" = (Get-ChildItem $folder -recurse -force | Where-Object {$_.PSIsContainer -eq $false} | Measure-Object | Select-Object Count).Count
+        "Size(MB)" = [Math]::Round((Get-ChildItem $folder -recurse -force | Where-Object {$_.PSIsContainer -eq $false} | Measure-Object -property Length -sum | Select-Object Sum).Sum /1MB, 3)
     }
-}
 
+}
+Write-Host "All subdirectories processed successfully." -ForegroundColor Green
 ###### Provide a size report of the directory and child directories. ######
-$childDirectorySizes | Format-Table 'Location','Size(MB)' -AutoSize
+$childDirectorySizes | Format-Table * -AutoSize
