@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<users>
+    <user>
+        <name>John Doe</name>
+        <age>30</age>
+        <email>john.doe@example.com</email>
+    </user>
+    <user>
+        <name>Jane Smith</name>
+        <age>25</age>
+        <email>jane.smith@example.com</email>
+    </user>
+    <user>
+        <name>Michael Johnson</name>
+        <age>40</age>
+        <email>michael.johnson@example.com</email>
+    </user>
+    <user>
+        <name>Susan Lee</name>
+        <age>28</age>
+        <email>susan.lee@example.com</email>
+    </user>
+    <user>
+        <name>Robert Williams</name>
+        <age>35</age>
+        <email>robert.williams@example.com</email>
+    </user>
+    <user>
+        <name>Linda Brown</name>
+        <age>42</age>
+        <email>linda.brown@example.com</email>
+    </user>
+    <user>
+        <name>David Wilson</name>
+        <age>33</age>
+        <email>david.wilson@example.com</email>
+    </user>
+    <user>
+        <name>Amy Taylor</name>
+        <age>27</age>
+        <email>amy.taylor@example.com</email>
+    </user>
+    <user>
+        <name>James Anderson</name>
+        <age>29</age>
+        <email>james.anderson@example.com</email>
+    </user>
+    <user>
+        <name>Mary Hernandez</name>
+        <age>31</age>
+        <email>mary.hernandez@example.com</email>
+    </user>
+</users>
