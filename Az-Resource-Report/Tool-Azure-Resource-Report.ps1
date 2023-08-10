@@ -15,18 +15,20 @@ function PublicIPResources {
 
     if (($Pips | Measure-Object).Count -ne 0) {
 
-        # Array for the attributes to select from variable $pips.
-        $pipAttributes = @(
-            'Name',
-            'Location',
-            'IPAddress',
-            'PublicIpAllocationMethod',
-            @{l= 'SKU-Name'; e= { "$($_.Sku.name)" }},
-            @{l= 'SKU-Tier'; e= { "$($_.sku.Tier)" }},
-            @{l= 'FQDN'; e= { $_.dnssettings.fqdn }}
-        )
-        # Select the attributes from $pips using the array above.
-        $pips | Format-List $pipAttributes
+        $publicIPs = foreach ($publicIP in $pips) {
+
+            [PSCustomObject]@{
+                Name                 = $publicIP
+                Location             = $publicIP.location
+                IP_Address           = $publicIP.IpAddress
+                IP_Allocation_Method = $publicIP.PublicIpAllocationMethod
+                FQDN                 = $publicIP.dnssettings.FQDN
+                SKU_Name             = $publicIP.sku.Name
+                SKU_Tier             = $publicIP.sku.Tier
+            }
+
+        }
+        $publicIPs | Format-Table -AutoSize
         # Exports the data table from $pipOutputTable to csv to store for later.
     }
     
@@ -71,4 +73,159 @@ function VMResources {
         $vmInfo | Format-Table * -AutoSize
     }
 
+}
+
+########## Get the NSG objects. ##########
+function NSGResources {
+
+    # Get all info on the NSGs.
+    $nsgResources = Get-AzNetworkSecurityGroup
+
+    if (($nsgResources | Measure-Object).Count -ne 0 ) { 
+
+        # Return the NSG Rules for each NSG.
+        $nsgSecurityRules = foreach ($nsg in $nsgResources) {
+
+            # Store the NSG security Rule into the variable $nsgRule.
+            $nsgRule = $nsg.SecurityRules
+
+            # Foreach loop goes through the single NSG security Rule and creates a new Hash table.
+            foreach ($nsgRuleItem in $nsgRule) {
+                [PSCustomObject]@{
+                    Priority             = $nsgRuleItem.Priority
+                    RuleName             = $nsgRuleItem.Name
+                    Direction            = $nsgRuleItem.Direction
+                    SourceAddress        = $nsgRuleItem.SourceAddressPrefix -join ','
+                    SourcePortRange      = $nsgRuleItem.SourcePortRange -join ','
+                    DestionAddress       = $nsgRuleItem.DestinationAddressPrefix -join ','
+                    DestinationPortRange = $nsgRuleItem.DestinationPortRange -join ','
+                    Description          = $nsgRuleItem.Description
+                }
+            }
+        }
+    }
+
+    $nsgSecurityRules | Format-Table -AutoSize
+}
+
+########## Get the vNet objects. ##########
+function vNETResources {
+
+    # get vnet config
+    $vnetResources = Get-AzVirtualNetwork | Sort-Object Name
+
+    if (($vnetResources | Measure-Object).Count -ne 0 ) {
+
+        # Foerach loop to get the details from the VNet and Subnets within it.
+        $VNetDetails = foreach ($vnet in $vnetResources) {
+
+            $vnetSubnetItem = $vnet.Subnets
+
+            foreach ($subnet in $vnetSubnetItem) {
+                [PSCustomObject]@{
+                    vNetName         = $vnet.Name
+                    vNetLocation     = $vnet.Location
+                    vNetAddressSpace = $vnet.AddressSpace.AddressPrefixes -join ','
+                    SubnetGateway    = ($subnet.NatGateway.id -split ('/'))[8]
+                    Routetable       = $subnet.RouteTable
+                }
+            }
+        }   
+        $VNetDetails | Format-Table -AutoSize
+    }
+}
+
+########## Get the vNet objects. ##########
+function natGatewayResources {
+
+    $natgwResources = Get-AzNatGateway
+        
+    if (($natgwResources | Measure-Object).Count -ne 0) {
+
+        $natgwResources | Format-Table -a Name, ResourceGuid, ResourceGroupName, Location, Type
+    }
+    
+}
+
+########## Get the vNet objects. ##########
+function loadBalancerResources {
+
+    $loadBalancers = Get-AzLoadBalancer
+
+    # Export Azure LBs Config to file
+    if (($loadBalancers | Measure-Object).Count -ne 0) {
+
+        foreach ($LB in $loadBalancerResources) {
+
+            $loadBalancerRules = $LB.LoadBalancingRules
+
+            foreach ($lbRule in $loadBalancerRules) {
+                [PSCustomObject]@{
+                    SKU                = $LB.Sku.Name
+                    SKUTier            = $LB.Sku.Tier
+                    FrontEndName       = $LB.FrontendIpConfigurations.Name
+                    FontEndIP          = $LB.FrontendIpConfigurations.PrivateIpAddress
+                    BackendPoolName    = $LB.BackendAddressPools.Name
+                    #BackendIPs =
+                    LBRuleName         = $lbRule.Name 
+                    LBRuleFrontendPort = $lbRule.FrontendPort
+                    LBRuleBackendPort  = $lbRule.BackendPort
+                    LBRuleProtocol     = $lbrule.Protocol
+                    HealthProbeName    = $LB.Probes.Name
+                    HealthProbePort    = $LB.Probes.Port
+                }
+            }
+        }
+    }
+}
+
+########## Get the vNet objects. ##########
+function vpnGatewayResources {
+
+    # Get the names of all resource groups in current context.
+    $resourceGroups = (Get-AzResourceGroup).ResourceGroupName
+    # Use the ResourceGroup varible above to get the vNet Gatway's if they exist in each RG.
+    $vNetGateways = $resourceGroups | ForEach-Object { Get-AzVirtualNetworkGateway -ResourceGroupName $_ }
+    
+    if ( ($vNetGateways | Measure-Object).Count -ne 0 ) {
+
+        ########## Get VNET-Gateway Information. ##########
+        $vNetGateWayInfo = foreach ($gateway in $vNetGateways) {
+            [PSCustomObject]@{
+                Name          = $gateway.name
+                Location      = $gateway.location
+                Type          = $gateway.GatewayType
+                VPN_Type      = $gateway.VPNType
+                Enable_BGP    = $gateway.enablebgp
+                Disable_IPsec = $gateway.DisableIPsecProtection
+                Enable_PIP    = $gateway.EnablePrivateIpAddress
+                Active_Active = $gateway.ActiveActive
+                SKU_Name      = $gateway.sku.Name
+                SKU_Tier      = $gateway.sku.Tier
+                SKU_Capacity  = $gateway.sku.Capacity
+            }
+        }
+
+        ########## Get VNET-Gateway Connections. ##########
+
+        # Get the NetGatewayConnection Names and Resource Groups.
+        $vNetGatewayConnectionName = $resourceGroups | ForEach-Object { Get-AzVirtualNetworkGatewayConnection -ResourceGroupName $_ | Select-Object name, ResourceGroupName }
+        # Request the full list of properties for each of the named NetGatewayConnections, wihtout this, the connection status and ingress\egress is blank for some reason.
+        $vNetGatewayConnectionInfo = $vNetGatewayConnectionName | ForEach-Object { Get-AzVirtualNetworkGatewayConnection -ResourceGroupName $_.ResourceGroupName -Name $_.Name }
+
+        $vpnGatewayConnections = foreach ($vNetgatewayConnection in $vNetGatewayConnectionInfo) {
+            [PSCustomObject]@{
+                Name                = $vNetGatewayConnection.Name
+                Resource_Group      = ($vNetGatewayConnection.id).split('/')[4]
+                Location            = $vNetGatewayConnection.Location
+                Gateway             = ($vNetGatewayConnection.VirtualNetworkGateway1.id).split('/')[-1]
+                Remote              = ($vNetGatewayConnection.LocalNetworkGateway2.id).split('/')[-1]
+                Connection_Protocol = $vNetgatewayConnection.ConnectionProtocol
+                Connection_Status   = $vNetGatewayConnection.ConnectionStatus
+                'Egress(GB)'        = [Math]::round(($vNetGatewayConnection.EgressBytesTransferred) / 1GB, 3)
+                'Ingress(GB)'       = [Math]::round(($vNetGatewayConnection.IngressBytesTransferred) / 1GB, 3)
+            }
+        }
+        $vpnGatewayConnections | Sort-Object -Descending 'Egress(GB)', 'Ingress(GB)' | Format-Table -AutoSize
+    }
 }
