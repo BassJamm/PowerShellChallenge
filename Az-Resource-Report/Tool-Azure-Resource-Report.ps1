@@ -317,3 +317,31 @@ function azDisks {
 
     }
 }
+
+########## Get Azure Disk Snapshots. ##########
+function azDiskSnapshots {
+    
+    $azSnapShots = Get-AzSnapshot
+
+    if ( ($azSnapShots | Measure-Object).Count -ne 0 ) {
+
+        $azDiskSnapshotsOutput = foreach ($Snap in $azSnapShots) {
+
+            [PSCustomObject]@{
+                Name            = $Snap.Name
+                RG_Name         = $Snap.ResourceGroupName
+                Location        = $Snap.Location
+                TimeCreated     = $Snap.TimeCreated
+                OSType          = $Snap.OSType
+                Source_Object   = ($Snap.CreationData.SourceResourceId).split("/")[-1]
+                Creation_Option = $Snap.CreationData.CreateOption
+                Incremental     = $Snap.Incremental
+                disksizeGB      = $Snap.DiskSizeGB
+                AccessPolicy    = $Snap.NetworkAccessPolicy
+
+            }
+        }
+        $azDiskSnapshotsOutput | Format-Table * -AutoSize
+    }
+
+}
