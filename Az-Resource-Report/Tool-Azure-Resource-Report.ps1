@@ -31,7 +31,7 @@ function PublicIPResources {
         $publicIPs | Format-Table -AutoSize
         # Exports the data table from $pipOutputTable to csv to store for later.
     }
-    
+
 }
 
 ########## Get the VM objects. ##########
@@ -70,7 +70,7 @@ function VMResources {
         }
 
         # Export VMs to csv file
-        $vmInfo | Format-Table * -AutoSize
+        $vmInfo | Out-GridView -Title 'Virtual Machines' -Wait
     }
 
 }
@@ -81,7 +81,7 @@ function NSGResources {
     # Get all info on the NSGs.
     $nsgResources = Get-AzNetworkSecurityGroup
 
-    if (($nsgResources | Measure-Object).Count -ne 0 ) { 
+    if (($nsgResources | Measure-Object).Count -ne 0 ) {
 
         # Return the NSG Rules for each NSG.
         $nsgSecurityRules = foreach ($nsg in $nsgResources) {
@@ -103,9 +103,9 @@ function NSGResources {
                 }
             }
         }
+        $nsgSecurityRules | Format-Table * -AutoSize
     }
 
-    $nsgSecurityRules | Format-Table -AutoSize
 }
 
 ########## Get the vNet objects. ##########
@@ -130,7 +130,7 @@ function vNETResources {
                     Routetable       = $subnet.RouteTable
                 }
             }
-        }   
+        }
         $VNetDetails | Format-Table -AutoSize
     }
 }
@@ -139,12 +139,12 @@ function vNETResources {
 function natGatewayResources {
 
     $natgwResources = Get-AzNatGateway
-        
+
     if (($natgwResources | Measure-Object).Count -ne 0) {
 
         $natgwResources | Format-Table -a Name, ResourceGuid, ResourceGroupName, Location, Type
     }
-    
+
 }
 
 ########## Get the vNet objects. ##########
@@ -167,7 +167,7 @@ function loadBalancerResources {
                     FontEndIP          = $LB.FrontendIpConfigurations.PrivateIpAddress
                     BackendPoolName    = $LB.BackendAddressPools.Name
                     #BackendIPs =
-                    LBRuleName         = $lbRule.Name 
+                    LBRuleName         = $lbRule.Name
                     LBRuleFrontendPort = $lbRule.FrontendPort
                     LBRuleBackendPort  = $lbRule.BackendPort
                     LBRuleProtocol     = $lbrule.Protocol
@@ -179,14 +179,14 @@ function loadBalancerResources {
     }
 }
 
-########## Get the vNet objects. ##########
+########## Get the VPN objects (Gatways and Connections). ##########
 function vpnGatewayResources {
 
     # Get the names of all resource groups in current context.
     $resourceGroups = (Get-AzResourceGroup).ResourceGroupName
     # Use the ResourceGroup varible above to get the vNet Gatway's if they exist in each RG.
     $vNetGateways = $resourceGroups | ForEach-Object { Get-AzVirtualNetworkGateway -ResourceGroupName $_ }
-    
+
     if ( ($vNetGateways | Measure-Object).Count -ne 0 ) {
 
         ########## Get VNET-Gateway Information. ##########
@@ -205,6 +205,7 @@ function vpnGatewayResources {
                 SKU_Capacity  = $gateway.sku.Capacity
             }
         }
+        $vNetGateWayInfo | Format-Table -AutoSize
 
         ########## Get VNET-Gateway Connections. ##########
 
@@ -227,5 +228,92 @@ function vpnGatewayResources {
             }
         }
         $vpnGatewayConnections | Sort-Object -Descending 'Egress(GB)', 'Ingress(GB)' | Format-Table -AutoSize
+    }
+}
+
+########## Get DNS Zones. ##########
+function DNSZones {
+
+    # Get the DNS Zones and all properties
+    $dnsZones = Get-AzDnsZone
+
+    if ( ($PrivateDNS | Measure-Object).Count -ne 0 ) {
+
+        $dnsZonesOutput = foreach ($dnszone in $dnsZones) {
+
+            [PSCustomObject]@{
+                Name              = $dnszone.Name
+                Resource_Group    = $dnszone.ResourceGroupName
+                Zone_Type         = $dnszone.ZoneType
+                Number_of_Records = $dnszone.NumberOfRecordSets
+                NameServers       = $dnszone.NameServers -join ","
+                Tags              = $dnszone.Tags
+            }
+
+        }
+        $dnsZonesOutput | Format-Table
+    }
+
+}
+
+########## Get Recovery Service Vaults. ##########
+function recoveryServiceVaults {
+
+    # Get all the rsvs and their properties.
+    $rsvResources = Get-AzRecoveryServicesVault
+
+    if ( ($Vaults | Measure-Object).Count -ne 0 ) {
+
+        $rsvOutput = foreach ($rsv in $rsvResources) {
+
+            # Capture the resv properties using the vaultID.
+            $rsvProperties = Get-AzRecoveryServicesVaultProperty -VaultId $rsv.ID
+
+            [PSCustomObject]@{
+                Name                            = $rsv.Name
+                Location                        = $rsv.Location
+                Resource_Group                  = $rsv.ResourceGroupName
+                StorageType                     = $rsvProperties.StorageType
+                Enhanced_Security               = $rsvProperties.EnhancedSecurityState
+                SoftDelete                      = $rsvProperties.SoftDeleteFeatureState
+                Encryption_UserID               = $rsvProperties.encryptionProperties.UserAssignedIdentity
+                Encryption_SystemID             = $rsvProperties.encryptionProperties.UseSystemAssignedIdentity
+                EncryptionAtRestType            = $rsvProperties.encryptionProperties.EncryptionAtRestType
+                Infrastructure_Encryption_State = $rsvProperties.encryptionProperties.InfrastructureEncryptionState
+            }
+
+        }
+        $rsvOutput | Format-Table -AutoSize
+    }
+
+}
+
+########## Get Azure Disks. ##########
+function azDisks {
+
+    $azDisks = Get-AzDisk
+
+    if ( ($Disks | Measure-Object).Count -ne 0 ) {
+
+        $azDisksOutput = foreach ($disk in $azDisks) {
+
+            [PSCustomObject]@{
+                Name               = $disk.Name
+                Managed_By         = ($disk.ManagedBy).split("/")[-1]
+                RG_Name            = $disk.ResourceGroupName
+                Location           = $disk.Location
+                TimeCreated        = $disk.TimeCreated
+                Size               = $disk.disksizeGB
+                State              = $disk.DiskState
+                SKU_Name           = $disk.sku.Name
+                SKU_Tier           = $disk.sku.Tier
+                'Read\Write(IOPS)' = $disk.DiskIOPSReadWrite
+                'Read(MBps)'       = $disk.DiskMBpsReadOnly
+
+            }
+        }
+
+        $azDisksOutput | Format-Table -AutoSize
+
     }
 }
