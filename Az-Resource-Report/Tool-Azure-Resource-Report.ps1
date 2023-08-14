@@ -3,10 +3,6 @@
 
 ########## Globally used variables. ##########
 
-# $ExportPath = "C:\temp\Az-Compute-Resouces-Report\"
-# This variable collects the one datetime to append to all files so they relate to the same report.
-# $DateTimeWhilstRunning = (Get-Date).ToString("dd-MM-yy_hh-mm-ss")
-
 ############# Public IPs #############
 function PublicIPResources {
 
@@ -28,8 +24,8 @@ function PublicIPResources {
             }
 
         }
+        # Format output to console.
         $publicIPs | Format-Table -AutoSize
-        # Exports the data table from $pipOutputTable to csv to store for later.
     }
 
 }
@@ -69,7 +65,7 @@ function VMResources {
             }
         }
 
-        # Export VMs to csv file
+        # Format output to console.
         $vmInfo | Out-GridView -Title 'Virtual Machines' -Wait
     }
 
@@ -103,9 +99,9 @@ function NSGResources {
                 }
             }
         }
+        # Format output to console.
         $nsgSecurityRules | Format-Table * -AutoSize
     }
-
 }
 
 ########## Get the vNet objects. ##########
@@ -131,6 +127,7 @@ function vNETResources {
                 }
             }
         }
+        # Format output to console.
         $VNetDetails | Format-Table -AutoSize
     }
 }
@@ -144,7 +141,6 @@ function natGatewayResources {
 
         $natgwResources | Format-Table -a Name, ResourceGuid, ResourceGroupName, Location, Type
     }
-
 }
 
 ########## Get the vNet objects. ##########
@@ -205,6 +201,7 @@ function vpnGatewayResources {
                 SKU_Capacity  = $gateway.sku.Capacity
             }
         }
+        # Format output to console.
         $vNetGateWayInfo | Format-Table -AutoSize
 
         ########## Get VNET-Gateway Connections. ##########
@@ -227,6 +224,7 @@ function vpnGatewayResources {
                 'Ingress(GB)'       = [Math]::round(($vNetGatewayConnection.IngressBytesTransferred) / 1GB, 3)
             }
         }
+        # Format output to console.
         $vpnGatewayConnections | Sort-Object -Descending 'Egress(GB)', 'Ingress(GB)' | Format-Table -AutoSize
     }
 }
@@ -251,6 +249,7 @@ function DNSZones {
             }
 
         }
+        # Format output to console.
         $dnsZonesOutput | Format-Table
     }
 
@@ -281,11 +280,10 @@ function recoveryServiceVaults {
                 EncryptionAtRestType            = $rsvProperties.encryptionProperties.EncryptionAtRestType
                 Infrastructure_Encryption_State = $rsvProperties.encryptionProperties.InfrastructureEncryptionState
             }
-
         }
+        # Format output to console.
         $rsvOutput | Format-Table -AutoSize
     }
-
 }
 
 ########## Get Azure Disks. ##########
@@ -312,9 +310,8 @@ function azDisks {
 
             }
         }
-
+        # Format output to console.
         $azDisksOutput | Format-Table -AutoSize
-
     }
 }
 
@@ -341,7 +338,41 @@ function azDiskSnapshots {
 
             }
         }
+        # Format output to console.
         $azDiskSnapshotsOutput | Format-Table * -AutoSize
     }
+}
 
+########## Get Azure Disk Snapshots. ##########
+function azNICS {
+
+    $azNICs = Get-AzNetworkInterface
+
+    if ( ($azNICs | Measure-Object).Count -ne 0 ) {
+       
+        $nicOutput = foreach ($NIC in $azNICs) {
+            
+            [PSCustomObject]@{
+                NIC_Name               = $NIC.Name
+                RG                     = $NIC.ResourceGroupName
+                Location               = $NIC.Location
+                Primary                = $NIC.Primary
+                VM_Name                = $NIC.VirtualMachine.id.split('/')[-1]
+                MAC_Address            = $NIC.MacAddress
+                NSG                    = $NIC.NetworkSecurityGroup
+                IP_Forwarding          = $NIC.EnableIPForwarding
+                Accelerated_Networking = $NIC.EnableAcceleratedNetworking
+                IP_Addresses           = ($NIC.ipconfigurations | ForEach-Object { "$($_.name), $($_.PrivateIpAddress), $($_.PrivateIpAllocationMethod)" -join "," }) -join " / "
+            }
+        }
+        $nicOutput | Format-Table * -AutoSize
+    }
+    
+}
+
+########## Get Azure Disk Snapshots. ##########
+function azVMRestorePoints {
+    
+    $RestorepointCollections
+    
 }
