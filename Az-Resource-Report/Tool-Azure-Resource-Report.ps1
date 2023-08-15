@@ -46,6 +46,7 @@ function VMResources {
 
         # Loop through VM objects and create a new custom object.
         $vmInfo = foreach ($vm in $AzVMs) {
+            Write-Host "Found $($vm.Name)." -ForegroundColor Yellow
 
             [PSCustomObject]@{
                 Name                    = $vm.Name
@@ -56,7 +57,7 @@ function VMResources {
                 VMSize_MemoryGB         = ($vmLocations | Where-Object Name -Match $vm.HardwareProfile.VmSize).MemoryInMB[0]
                 OS_type                 = $vm.StorageProfile.OsDisk.OsType
                 OSDisk_Name             = $vm.StorageProfile.OsDisk.Name
-                OSDisk_Size             = ($vmDisks | Where-Object Name -Match $vm.StorageProfile.OsDisk.Name).disksizeGB
+                OSDisk_Size             = ($vmDisks | Where-Object Name -Match $vm.StorageProfile.OsDisk.Name).disksizeGB[-1]
                 Attached_Data_Disks     = ($vm.StorageProfile.DataDisks | Measure-Object).Count
                 Max_Data_Disk_Supported = ($vmLocations | Where-Object Name -Match $vm.HardwareProfile.VmSize).MaxDataDiskCount[0]
                 Primary_NIC             = ($vmNICs | Where-Object { ($_.Name -Match $vm.Name) -and ($_.Primary -eq 'True') }).Name
@@ -66,6 +67,7 @@ function VMResources {
         }
 
         # Format output to console.
+        Write-Host "Launching new Window." -ForegroundColor Yellow
         $vmInfo | Out-GridView -Title 'Virtual Machines' -Wait
     }
 
@@ -88,6 +90,7 @@ function NSGResources {
             # Foreach loop goes through the single NSG security Rule and creates a new Hash table.
             foreach ($nsgRuleItem in $nsgRule) {
                 [PSCustomObject]@{
+                    NSG_Name             = $nsg.Name
                     Priority             = $nsgRuleItem.Priority
                     RuleName             = $nsgRuleItem.Name
                     Direction            = $nsgRuleItem.Direction
@@ -370,9 +373,126 @@ function azNICS {
     
 }
 
-########## Get Azure Disk Snapshots. ##########
-function azVMRestorePoints {
-    
-    $RestorepointCollections
-    
+########## Get Azure SQL Resources. ##########
+function azSQLResources {
+    # Grab all of the sql servers in the current context.
+    $azSQLServers = Get-AzSqlServer
+
+    if ( ($azSQLServers | Measure-Object).Count -ne 0 ) {
+        # Loop through each SQL server found.
+        $sqlResourcesOutput = foreach ($Server in $azSQLServers) {
+
+            # Find all databases under the sql server.
+            $databases = $Server | Get-AzSqlDatabase
+
+            # Loop through each Database and collect information into new object.
+            foreach ($db in $databases) {
+
+                [PSCustomObject]@{
+                    Server_RG           = $Server.ResourceGroupName
+                    Server_Name         = $Server.ServerName
+                    Server_FQDN         = $Server.FullyQualifiedDomainName
+                    Server_Location     = $Server.location
+                    Server_PublicAccess = $Server.PublicNetworkAccess
+                    Server_SQLAdmin     = $Server.SqlAdministratorLogin
+                    DB_Name             = $db.DatabaseName
+                    DB_Creation         = $db.CreationDate
+                    DB_Sku              = $db.SkuName
+                    DB_Redundant        = $db.ZoneRedundant
+                    DB_ReadScale        = $db.ReadScale
+                    DB_Paused           = $db.PausedDate
+                    DB_Resumed          = $db.ResumedDate
+                }
+            }  
+        }
+    }    
 }
+
+########## Get Azure Recovery Vaults. ##########
+
+function azRecoveryServicesVaults {
+
+    # Get all of the RSVs in the current context.
+    $azRecoveryServiceVaults = Get-AzRecoveryServicesVault
+
+    # Check each vault for resources.
+    foreach ($Vault in $azRecoveryServiceVaults) {
+
+        # Check for the different resource types in vault.
+        $vmBackupItems = Get-AzRecoveryServicesBackupContainer -ContainerType AzureVM -VaultId $Vault.ID | Select-Object *, @{l = 'VaultName'; e = { $Vault.name } }
+        $sqlBackupItems = Get-AzRecoveryServicesBackupContainer -ContainerType AzureSQL -VaultId $Vault.ID | Select-Object *, @{l = 'VaultName'; e = { $Vault.name } }
+        $saBackupItems = Get-AzRecoveryServicesBackupContainer -ContainerType AzureStorage -VaultId $Vault.ID | Select-Object *, @{l = 'VaultName'; e = { $Vault.name } }
+                
+    }
+    if ( ($vmBackupItems | Measure-Object).Count -ne 0 ) {
+
+        $backupVMOutput = foreach ($vm in $vmBackupItems) {
+
+            [PSCustomObject]@{
+                Vault          = $vm.VaultName
+                Resource_Name  = $vm.FriendlyName
+                Resource_Group = $vm.ResourceGroupName
+                Status         = $vm.Status
+            }
+        }
+        $backupVMOutput | Format-Table -AutoSize
+    }
+    if ( ($sqlBackupItems | Measure-Object).Count -ne 0 ) {
+
+        $backupSQLOutput = foreach ($sqlItem in $sqlBackupItems) {
+
+            [PSCustomObject]@{
+                Vault          = $sqlItem.VaultName
+                Resource_Name  = $sqlItem.FriendlyName
+                Resource_Group = $sqlItem.ResourceGroupName
+                Status         = $sqlItem.Status
+            }
+        }
+        $backupSQLOutput | Format-Table -AutoSize
+    }
+    if ( ($saBackupItems | Measure-Object).Count -ne 0 ) {
+
+        $backupSAOutput = foreach ($saItem in $saBackupItems) {
+
+            [PSCustomObject]@{
+                Vault          = $saItem.VaultName
+                Resource_Name  = $saItem.FriendlyName
+                Resource_Group = $saItem.ResourceGroupName
+                Status         = $saItem.Status
+            }
+        }
+        $backupSAOutput | Format-Table -AutoSize
+    }
+}
+
+########## Get Azure Storage Accounts. ##########
+function azStorageAccounts {
+
+    $azSAResouces = Get-AzStorageAccount
+
+    if ( ($azSAResouces | Measure-Object).Count -ne 0 ) {
+
+        $saAccountsOutput = foreach ($sa in $azStorageAccounts) {
+            
+            [PSCustomObject]@{
+                SA_Name             = $sa.StorageAccountName
+                Resource_Group      = $sa.ResourceGroupName
+                Location            = $sa.PrimaryLocation
+                Creation_Time       = $sa.Creationtime
+                SKU_Name            = $sa.Sku.Name
+                Kind                = $sa.Kind
+                Access_Tier         = $sa.Accesstier
+                Provisionsing_State = $sa.ProvisioningState
+                Statusof_Primary    = $sa.StatusOfPrimary
+                Statusof_Secondary  = $sa.StatusOfSecondary
+                HTTPS_traffic_only  = $sa.EnableHttpsTrafficOnly
+                Blob_public_access  = $sa.AllowBlobPublicAccess
+                Large_FileShares    = $sa.LargeFileShares
+                TLS_Version         = $sa.MinimumTlsVersion
+                Tags                = $sa.Tags
+            } 
+        }
+        $saAccountsOutput | Format-Table -AutoSize
+    }    
+}
+
