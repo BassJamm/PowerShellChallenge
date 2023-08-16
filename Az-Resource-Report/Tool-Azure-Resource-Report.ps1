@@ -495,4 +495,3 @@ function azStorageAccounts {
         $saAccountsOutput | Format-Table -AutoSize
     }    
 }
-
