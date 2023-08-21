@@ -346,7 +346,7 @@ function azDiskSnapshots {
     }
 }
 
-########## Get Azure Disk Snapshots. ##########
+########## Get Azure NICS. ##########
 function azNICS {
 
     $azNICs = Get-AzNetworkInterface
