@@ -30,8 +30,21 @@ function PublicIPResources {
 
 }
 
-########## Get the VM objects. ##########
-function VMResources {
+########## Get the VM status. ##########
+function azVMResources {
+
+    Write-Host "Getting VM Resources and Status'." -ForegroundColor Yellow
+    $vmStatus = Get-AzVM -Status
+    Write-Host "VM Information" -ForegroundColor Yellow
+    $vmStatus | Select-Object Name,Location,ResourceGroupName,OsName,TimeCreated,PowerState | Sort-Object ResourceGroupName,PowerState,Name | Format-Table -AutoSize
+    Start-Sleep 2
+    Write-Host "VM States" -ForegroundColor Yellow
+    $vmStatus | Group-Object PowerState | Select-Object Name,Count | Format-Table -AutoSize
+
+}
+
+########## Get the VM objects with specific information. ##########
+function VMResourceReport {
 
     # Collect the Az compute resources.
     $AzVMs = Get-AzVM
@@ -135,7 +148,7 @@ function vNETResources {
     }
 }
 
-########## Get the vNet objects. ##########
+########## Get the NatGateway objects. ##########
 function natGatewayResources {
 
     $natgwResources = Get-AzNatGateway
@@ -146,7 +159,7 @@ function natGatewayResources {
     }
 }
 
-########## Get the vNet objects. ##########
+########## Get the LoadBalancer objects. ##########
 function loadBalancerResources {
 
     $loadBalancers = Get-AzLoadBalancer
@@ -342,7 +355,9 @@ function azDiskSnapshots {
             }
         }
         # Format output to console.
-        $azDiskSnapshotsOutput | Format-Table * -AutoSize
+        Write-Host "This output does not include all fields, only the most useful to see quickly." -ForegroundColor Yellow
+        Write-Host 'To see all information, type the command,$azDiskSnapshotsOutput | Format-List.' -ForegroundColor Yellow
+        $azDiskSnapshotsOutput | Sort-Object TimeCreated | Format-Table Name,Location,TimeCreated,RG_Name,Source_Object -AutoSize
     }
 }
 
